@@ -1,0 +1,88 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  color-scheme: light;
+}
+
+html,
+body {
+  height: 100%;
+  background: #F6F7FA;
+}
+
+body {
+  font-family: var(--font-sans), system-ui, sans-serif;
+  color: #16233F;
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+}
+
+* {
+  border-color: #E3E7EE;
+}
+
+::selection {
+  background: #D3E2FD;
+  color: #08122A;
+}
+
+/* Visible keyboard focus everywhere — accessibility floor */
+a:focus-visible,
+button:focus-visible,
+input:focus-visible,
+select:focus-visible,
+textarea:focus-visible,
+[tabindex]:focus-visible {
+  outline: 2px solid #2E6BE6;
+  outline-offset: 2px;
+  border-radius: 4px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.001ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.001ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+
+/* Numeric / data columns lean on the mono face — a deliberate nod to the
+   brand's "systems" register, used consistently for timestamps, percentages,
+   and IDs across every screen. */
+.font-data {
+  font-family: var(--font-mono), ui-monospace, monospace;
+  font-feature-settings: "tnum" 1, "zero" 1;
+  letter-spacing: -0.01em;
+}
+
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+.no-scrollbar {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+
+/* Chevron progress track — echoes the SafeX shield/chevron mark instead of
+   a generic pill progress bar. */
+.chevron-track {
+  -webkit-mask-image: repeating-linear-gradient(
+    -60deg,
+    #000 0,
+    #000 6px,
+    transparent 6px,
+    transparent 9px
+  );
+  mask-image: repeating-linear-gradient(
+    -60deg,
+    #000 0,
+    #000 6px,
+    transparent 6px,
+    transparent 9px
+  );
+}
