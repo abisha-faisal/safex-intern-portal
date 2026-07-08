@@ -56,9 +56,9 @@ export default async function GroupsPage() {
             >
               <div className="flex items-start justify-between">
                 <h3 className="font-display text-base font-semibold text-ink-900">{g.name}</h3>
-                <span className="rounded-sx bg-surface-muted px-2 py-0.5 text-xs font-medium text-ink-600/70">
-                  {members.length} intern{members.length === 1 ? "" : "s"}
-                </span>
+               <span className="rounded-sx bg-surface-muted px-2 py-0.5 text-xs font-medium text-ink-600/70">
+  {members.length + (leader ? 1 : 0)} member{members.length + (leader ? 1 : 0) === 1 ? "" : "s"}
+</span>
               </div>
 
               <div className="mt-3 flex items-center gap-2 text-sm text-ink-600/70">
