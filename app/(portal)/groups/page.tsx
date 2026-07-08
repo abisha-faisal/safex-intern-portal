@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { createClient } from "@/lib/supabase/server";
+import { createClient, getCurrentProfile } from "@/lib/supabase/server";
 import { PageHeader } from "@/components/PageHeader";
 import { ProgressBar } from "@/components/ProgressBar";
 import { initials } from "@/lib/utils";
@@ -8,10 +8,7 @@ import { CreateGroupButton } from "@/components/CreateGroupButton";
 
 export default async function GroupsPage() {
   const supabase = createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-  const { data: me } = await supabase.from("profiles").select("*").eq("id", user!.id).single<Profile>();
+  const { profile: me } = await getCurrentProfile();
 
   const [{ data: groups }, { data: people }, { data: tasks }] = await Promise.all([
     supabase.from("groups").select("*").order("name").returns<Group[]>(),

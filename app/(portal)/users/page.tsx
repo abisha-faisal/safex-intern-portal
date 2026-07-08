@@ -1,5 +1,5 @@
 import { redirect } from "next/navigation";
-import { createClient } from "@/lib/supabase/server";
+import { createClient, getCurrentProfile } from "@/lib/supabase/server";
 import { PageHeader } from "@/components/PageHeader";
 import { CreateUserButton } from "@/components/CreateUserButton";
 import { UserManagementTable } from "@/components/UserManagementTable";
@@ -7,10 +7,7 @@ import type { Profile, Group } from "@/lib/types";
 
 export default async function UsersPage() {
   const supabase = createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-  const { data: me } = await supabase.from("profiles").select("*").eq("id", user!.id).single<Profile>();
+  const { user, profile: me } = await getCurrentProfile();
 
   // Defense in depth: even though nothing links here for non-admins and
   // the underlying writes are already blocked server-side, don't even

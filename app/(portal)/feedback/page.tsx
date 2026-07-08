@@ -1,14 +1,11 @@
-import { createClient } from "@/lib/supabase/server";
+import { createClient, getCurrentProfile } from "@/lib/supabase/server";
 import { PageHeader } from "@/components/PageHeader";
 import { FeedbackForm } from "@/components/FeedbackForm";
-import type { Profile, Group, Feedback } from "@/lib/types";
+import type { Group, Feedback } from "@/lib/types";
 
 export default async function FeedbackPage() {
   const supabase = createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-  const { data: me } = await supabase.from("profiles").select("*").eq("id", user!.id).single<Profile>();
+  const { profile: me } = await getCurrentProfile();
 
   if (me?.role === "intern") {
     let alreadySubmitted = false;

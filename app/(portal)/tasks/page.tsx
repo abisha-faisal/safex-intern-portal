@@ -1,4 +1,4 @@
-import { createClient } from "@/lib/supabase/server";
+import { createClient, getCurrentProfile } from "@/lib/supabase/server";
 import { PageHeader } from "@/components/PageHeader";
 import { TaskBoard } from "@/components/TaskBoard";
 import { CreateTaskButton } from "@/components/CreateTaskButton";
@@ -6,10 +6,7 @@ import type { Profile, Group, Task } from "@/lib/types";
 
 export default async function TasksPage() {
   const supabase = createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-  const { data: me } = await supabase.from("profiles").select("*").eq("id", user!.id).single<Profile>();
+  const { profile: me } = await getCurrentProfile();
 
   const [{ data: tasks }, { data: people }, { data: groups }] = await Promise.all([
     supabase.from("tasks").select("*").returns<Task[]>(),

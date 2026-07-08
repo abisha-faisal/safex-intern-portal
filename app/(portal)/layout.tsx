@@ -1,25 +1,14 @@
 import { redirect } from "next/navigation";
-import { createClient } from "@/lib/supabase/server";
+import { getCurrentProfile } from "@/lib/supabase/server";
 import { Sidebar } from "@/components/Sidebar";
 import { MobileTopBar } from "@/components/MobileTopBar";
-import type { Profile } from "@/lib/types";
 
 export default async function PortalLayout({ children }: { children: React.ReactNode }) {
-  const supabase = createClient();
-
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  const { user, profile } = await getCurrentProfile();
 
   if (!user) {
     redirect("/login");
   }
-
-  const { data: profile } = await supabase
-    .from("profiles")
-    .select("*")
-    .eq("id", user.id)
-    .single<Profile>();
 
   if (!profile) {
     // Auth user exists but no profile row (shouldn't happen via normal

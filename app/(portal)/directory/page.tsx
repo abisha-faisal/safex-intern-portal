@@ -1,16 +1,12 @@
 import { redirect } from "next/navigation";
-import { createClient } from "@/lib/supabase/server";
+import { createClient, getCurrentProfile } from "@/lib/supabase/server";
 import { PageHeader } from "@/components/PageHeader";
 import { DirectoryTable } from "@/components/DirectoryTable";
 import type { Profile, Group } from "@/lib/types";
 
 export default async function DirectoryPage() {
   const supabase = createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-
-  const { data: me } = await supabase.from("profiles").select("*").eq("id", user!.id).single<Profile>();
+  const { profile: me } = await getCurrentProfile();
 
   if (me?.role === "intern") {
     redirect("/dashboard");

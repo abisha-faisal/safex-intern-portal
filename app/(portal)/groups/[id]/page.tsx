@@ -1,6 +1,6 @@
 import { notFound, redirect } from "next/navigation";
 import Link from "next/link";
-import { createClient } from "@/lib/supabase/server";
+import { createClient, getCurrentProfile } from "@/lib/supabase/server";
 import { PageHeader } from "@/components/PageHeader";
 import { ProgressBar } from "@/components/ProgressBar";
 import { StatusPill } from "@/components/StatusPill";
@@ -11,10 +11,7 @@ import type { Profile, Group, Task } from "@/lib/types";
 
 export default async function GroupDetailPage({ params }: { params: { id: string } }) {
   const supabase = createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-  const { data: me } = await supabase.from("profiles").select("*").eq("id", user!.id).single<Profile>();
+  const { profile: me } = await getCurrentProfile();
 
   // RLS on `groups` returns nothing if this id isn't the caller's own
   // group (for leaders/interns) or doesn't exist — either way this reads

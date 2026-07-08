@@ -1,5 +1,5 @@
 import { notFound } from "next/navigation";
-import { createClient } from "@/lib/supabase/server";
+import { createClient, getCurrentProfile } from "@/lib/supabase/server";
 import { PageHeader } from "@/components/PageHeader";
 import { TaskEditForm } from "@/components/TaskEditForm";
 import { NotesThread } from "@/components/NotesThread";
@@ -10,10 +10,7 @@ import type { Profile, Task, TaskNote } from "@/lib/types";
 
 export default async function TaskDetailPage({ params }: { params: { id: string } }) {
   const supabase = createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-  const { data: me } = await supabase.from("profiles").select("*").eq("id", user!.id).single<Profile>();
+  const { user, profile: me } = await getCurrentProfile();
 
   // RLS on `tasks` returns null if this task isn't the caller's own
   // assignment (intern), isn't in the caller's group (leader), or

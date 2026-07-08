@@ -1,4 +1,4 @@
-import { createClient } from "@/lib/supabase/server";
+import { createClient, getCurrentProfile } from "@/lib/supabase/server";
 import { PageHeader } from "@/components/PageHeader";
 import { StatCard } from "@/components/StatCard";
 import { StatusPill } from "@/components/StatusPill";
@@ -60,11 +60,7 @@ function groupUpcomingTasks(tasks: Task[]): UpcomingRow[] {
 
 export default async function DashboardPage() {
   const supabase = createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-
-  const { data: me } = await supabase.from("profiles").select("*").eq("id", user!.id).single<Profile>();
+  const { profile: me } = await getCurrentProfile();
 
   // Each of these queries is scoped automatically by RLS: an admin sees
   // every row, a leader sees only their group's, an intern sees only
