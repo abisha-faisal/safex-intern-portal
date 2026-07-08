@@ -4,8 +4,59 @@ import { StatCard } from "@/components/StatCard";
 import { StatusPill } from "@/components/StatusPill";
 import { ProgressBar } from "@/components/ProgressBar";
 import { formatDate, isOverdue } from "@/lib/utils";
-import type { Profile, Group, Task } from "@/lib/types";
+import type { Profile, Group, Task, TaskStatus } from "@/lib/types";
 import Link from "next/link";
+
+// A row in the "Upcoming deadlines" list. Either one real task, or a
+// stand-in for every task created by the same "assign to whole group"
+// action (same batch_id), so that widget shows one entry per assignment
+// instead of one per intern.
+interface UpcomingRow {
+  id: string;
+  title: string;
+  deadline: string | null;
+  status: TaskStatus;
+  progress: number;
+  groupSize: number; // 1 for a solo task
+}
+
+function groupUpcomingTasks(tasks: Task[]): UpcomingRow[] {
+  const batches = new Map<string, Task[]>();
+  const solo: Task[] = [];
+
+  tasks.forEach((t) => {
+    if (t.batch_id) {
+      batches.set(t.batch_id, [...(batches.get(t.batch_id) ?? []), t]);
+    } else {
+      solo.push(t);
+    }
+  });
+
+  const rows: UpcomingRow[] = solo.map((t) => ({
+    id: t.id,
+    title: t.title,
+    deadline: t.deadline,
+    status: t.status,
+    progress: t.progress,
+    groupSize: 1,
+  }));
+
+  batches.forEach((members) => {
+    const representative = members[0];
+    const allCompleted = members.every((m) => m.status === "completed");
+    const allPending = members.every((m) => m.status === "pending");
+    rows.push({
+      id: representative.id,
+      title: representative.title,
+      deadline: representative.deadline,
+      status: allCompleted ? "completed" : allPending ? "pending" : "in_progress",
+      progress: Math.round(members.reduce((s, m) => s + m.progress, 0) / members.length),
+      groupSize: members.length,
+    });
+  });
+
+  return rows;
+}
 
 export default async function DashboardPage() {
   const supabase = createClient();
@@ -32,14 +83,21 @@ export default async function DashboardPage() {
 
   const in7days = new Date();
   in7days.setDate(in7days.getDate() + 7);
-  const upcoming = allTasks
-    .filter((t) => t.status !== "completed" && t.deadline && new Date(t.deadline) <= in7days)
+  const upcoming = groupUpcomingTasks(
+    allTasks.filter((t) => t.status !== "completed" && t.deadline && new Date(t.deadline) <= in7days)
+  )
     .sort((a, b) => (a.deadline ?? "").localeCompare(b.deadline ?? ""))
     .slice(0, 6);
 
   const isAdmin = me?.role === "admin";
   const isLeader = me?.role === "leader";
   const isIntern = me?.role === "intern";
+
+  // For a leader, `groups.length` from RLS is always exactly 1 (their
+  // own group) — a stat card that always reads "1" for every leader,
+  // forever, isn't telling them anything. Overdue count actually
+  // changes and is something they'd want to act on.
+  const overdueCount = allTasks.filter((t) => isOverdue(t.deadline, t.status)).length;
 
   return (
     <div>
@@ -63,11 +121,13 @@ export default async function DashboardPage() {
             accent="navy"
           />
         )}
-        {!isIntern && (
+        {isAdmin && <StatCard label="Active groups" value={groups?.length ?? 0} accent="teal" />}
+        {isLeader && (
           <StatCard
-            label={isAdmin ? "Active groups" : "Your group"}
-            value={groups?.length ?? 0}
-            accent="teal"
+            label="Overdue tasks"
+            value={overdueCount}
+            hint={overdueCount > 0 ? "Past their deadline" : "Nothing overdue"}
+            accent="signal"
           />
         )}
         <StatCard
@@ -111,9 +171,16 @@ export default async function DashboardPage() {
                 <div className="min-w-0">
                   <Link href={`/tasks/${t.id}`} className="truncate font-medium text-ink-900 hover:text-signal-600">
                     {t.title}
+                    {t.groupSize > 1 && (
+                      <span className="ml-2 inline-flex items-center rounded-sx bg-navy-50 px-1.5 py-0.5 text-2xs font-semibold text-navy-700">
+                        Group · {t.groupSize}
+                      </span>
+                    )}
                   </Link>
                   <div className="mt-0.5 text-xs text-ink-600/60">
-                    {!isIntern && <span>{nameById.get(t.assignee_id) ?? "—"} · </span>}
+                    {!isIntern && t.groupSize === 1 && (
+                      <span>{nameById.get((tasks ?? []).find((x) => x.id === t.id)?.assignee_id ?? "") ?? "—"} · </span>
+                    )}
                     <span className={isOverdue(t.deadline, t.status) ? "font-medium text-status-blocked" : ""}>
                       Due {formatDate(t.deadline)}
                     </span>
