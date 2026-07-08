@@ -21,7 +21,7 @@ export default function LoginPage() {
     const { error: signInError } = await supabase.auth.signInWithPassword({ email, password });
 
     if (signInError) {
-      setError(signInError.message); // TEMP DEBUG: showing raw Supabase error, revert after fixing
+      setError("That email and password don't match an active SafeX account.");
       setLoading(false);
       return;
     }
