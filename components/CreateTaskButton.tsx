@@ -52,10 +52,14 @@ export function CreateTaskButton({
 
     const targets = assignMode === "group" ? interns.map((p) => p.id) : [assigneeId];
 
-    // The `tasks` table is one row per person, so "assign to the whole
-    // group" fires one create request per intern rather than a single
-    // bulk row — each still goes through the same tasks_insert RLS
-    // policy individually.
+    // The `tasks` table is still one row per person (RLS/columns are
+    // scoped per-intern), but for a group assignment we generate one
+    // shared batch_id and send it with every copy. That lets the task
+    // board show them as a single grouped task and lets editing the
+    // title/description/deadline later apply to every copy at once,
+    // instead of the copies being fully independent.
+    const batchId = assignMode === "group" && targets.length > 1 ? crypto.randomUUID() : null;
+
     const results = await Promise.all(
       targets.map((id) =>
         fetch("/api/tasks", {
@@ -67,6 +71,7 @@ export function CreateTaskButton({
             deadline: deadline || null,
             assignee_id: id,
             group_id: groupId,
+            batch_id: batchId,
           }),
         })
       )
@@ -168,9 +173,10 @@ export function CreateTaskButton({
             </Field>
           ) : (
             <p className="rounded-sx bg-surface-sunk px-3 py-2 text-xs text-ink-600/60">
-              This will create the same task individually for all {interns.length} intern
-              {interns.length === 1 ? "" : "s"} in this group — each can update their own copy
-              independently.
+              This creates one linked task for all {interns.length} intern
+              {interns.length === 1 ? "" : "s"} in this group. Each intern tracks their own
+              status and progress independently, but editing the title, description, or
+              deadline later can be applied to everyone at once from the task page.
             </p>
           )}
 

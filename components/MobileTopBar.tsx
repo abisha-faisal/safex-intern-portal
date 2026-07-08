@@ -11,20 +11,28 @@ export function MobileTopBar({ profile }: { profile: Profile }) {
   const [open, setOpen] = useState(false);
 
   return (
-    <div className="sticky top-0 z-40 flex h-16 items-center justify-between border-b border-border bg-surface/95 px-4 backdrop-blur lg:hidden">
-      <LogoLockup />
-      <button
-        aria-label="Open menu"
-        onClick={() => setOpen(true)}
-        className="flex h-9 w-9 items-center justify-center rounded-sx border border-border text-ink-700"
-      >
-        <svg width="18" height="18" viewBox="0 0 18 18" fill="none">
-          <path d="M2.5 5h13M2.5 9h13M2.5 13h13" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" />
-        </svg>
-      </button>
+    <>
+      <div className="sticky top-0 z-40 flex h-16 items-center justify-between border-b border-border bg-surface/95 px-4 backdrop-blur lg:hidden">
+        <LogoLockup />
+        <button
+          aria-label="Open menu"
+          onClick={() => setOpen(true)}
+          className="flex h-9 w-9 items-center justify-center rounded-sx border border-border text-ink-700"
+        >
+          <svg width="18" height="18" viewBox="0 0 18 18" fill="none">
+            <path d="M2.5 5h13M2.5 9h13M2.5 13h13" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" />
+          </svg>
+        </button>
+      </div>
 
+      {/* Rendered as a sibling of the sticky/backdrop-blur bar above, not
+          nested inside it. On iOS Safari, an ancestor with a blur filter
+          silently becomes the "containing block" for any `position: fixed`
+          descendant — so this drawer was being squeezed into that skinny
+          64px-tall top bar instead of covering the full screen, which is
+          why it overlapped the page content instead of sliding over it. */}
       {open && (
-        <div className="fixed inset-0 z-50">
+        <div className="fixed inset-0 z-50 lg:hidden">
           <div className="absolute inset-0 bg-ink-900/40" onClick={() => setOpen(false)} />
           <div className="absolute inset-y-0 right-0 flex w-72 max-w-[85vw] flex-col bg-surface shadow-popover">
             <div className="flex h-16 items-center justify-between border-b border-border px-5">
@@ -57,6 +65,6 @@ export function MobileTopBar({ profile }: { profile: Profile }) {
           </div>
         </div>
       )}
-    </div>
+    </>
   );
 }

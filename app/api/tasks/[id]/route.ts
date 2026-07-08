@@ -39,13 +39,59 @@ export async function PATCH(request: Request, { params }: { params: { id: string
     return NextResponse.json({ error: "Nothing to update" }, { status: 400 });
   }
 
+  // Optional: when a leader/admin edits a task that was created as a
+  // "whole group" assignment (has a batch_id), they can choose to apply
+  // the shared fields (title/description/deadline) to every intern's
+  // copy at once instead of just this one row. Status/progress/assignee
+  // are never batch-applied — those are always specific to one intern's
+  // copy — so we split the update into a "shared" part and a
+  // "this-row-only" part.
+  const applyToGroup = body.apply_to_group === true;
+  const sharedFields = ["title", "description", "deadline"] as const;
+  const sharedUpdate: Record<string, unknown> = {};
+  const rowOnlyUpdate: Record<string, unknown> = {};
+  for (const [key, value] of Object.entries(update)) {
+    if ((sharedFields as readonly string[]).includes(key)) sharedUpdate[key] = value;
+    else rowOnlyUpdate[key] = value;
+  }
+
+  if (applyToGroup && Object.keys(sharedUpdate).length > 0) {
+    const { data: existing, error: fetchError } = await supabase
+      .from("tasks")
+      .select("batch_id")
+      .eq("id", params.id)
+      .single();
+    if (fetchError) return NextResponse.json({ error: fetchError.message }, { status: 400 });
+
+    if (existing?.batch_id) {
+      // tasks_update RLS still scopes this to rows the caller may touch
+      // (admin: any; leader: their own group) — batch_id alone can't
+      // reach another group's tasks, since every row in a batch was
+      // created within a single group to begin with.
+      const { error: batchError } = await supabase
+        .from("tasks")
+        .update(sharedUpdate)
+        .eq("batch_id", existing.batch_id);
+      if (batchError) return NextResponse.json({ error: batchError.message }, { status: 400 });
+    } else {
+      // No batch_id (single-intern task) — apply_to_group has nothing
+      // else to apply to, so just fold it into this row's own update.
+      Object.assign(rowOnlyUpdate, sharedUpdate);
+    }
+  } else {
+    Object.assign(rowOnlyUpdate, sharedUpdate);
+  }
+
   // tasks_update RLS scopes *which rows* this can touch (admin: any;
   // leader: their group; intern: only their own assignment). The
   // trg_enforce_task_update_scope trigger then scopes *which columns*
   // an intern may change within that row — title/description/deadline/
   // assignee/group changes from an intern session are rejected at the
   // database layer even though this route itself doesn't check role.
-  const { data, error } = await supabase.from("tasks").update(update).eq("id", params.id).select().single();
+  const { data, error } =
+    Object.keys(rowOnlyUpdate).length > 0
+      ? await supabase.from("tasks").update(rowOnlyUpdate).eq("id", params.id).select().single()
+      : await supabase.from("tasks").select().eq("id", params.id).single();
 
   if (error) return NextResponse.json({ error: error.message }, { status: 400 });
   return NextResponse.json({ task: data });

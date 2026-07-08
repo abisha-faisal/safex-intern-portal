@@ -31,6 +31,7 @@ export interface Task {
   deadline: string | null;
   status: TaskStatus;
   progress: number;
+  batch_id: string | null;
   created_at: string;
   updated_at: string;
 }

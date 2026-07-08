@@ -9,10 +9,13 @@ export function TaskEditForm({
   task,
   canEditFull,
   assigneeOptions,
+  batchSiblingCount = 0,
 }: {
   task: Task;
   canEditFull: boolean;
   assigneeOptions: Profile[];
+  /** How many *other* tasks share this task's batch_id (0 if it isn't a group assignment). */
+  batchSiblingCount?: number;
 }) {
   const router = useRouter();
   const [title, setTitle] = useState(task.title);
@@ -21,9 +24,12 @@ export function TaskEditForm({
   const [assigneeId, setAssigneeId] = useState(task.assignee_id);
   const [status, setStatus] = useState(task.status);
   const [progress, setProgress] = useState(task.progress);
+  const [applyToGroup, setApplyToGroup] = useState(true);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [saved, setSaved] = useState(false);
+
+  const isGroupTask = !!task.batch_id && batchSiblingCount > 0;
 
   async function handleSave() {
     setSaving(true);
@@ -36,6 +42,7 @@ export function TaskEditForm({
       body.description = description;
       body.deadline = deadline || null;
       body.assignee_id = assigneeId;
+      if (isGroupTask) body.apply_to_group = applyToGroup;
     }
 
     const res = await fetch(`/api/tasks/${task.id}`, {
@@ -98,6 +105,22 @@ export function TaskEditForm({
           </select>
         </Field>
       </div>
+
+      {isGroupTask && canEditFull && (
+        <label className="flex items-start gap-2.5 rounded-sx border border-signal-100 bg-signal-50 px-3 py-2.5 text-xs text-ink-700">
+          <input
+            type="checkbox"
+            checked={applyToGroup}
+            onChange={(e) => setApplyToGroup(e.target.checked)}
+            className="mt-0.5 accent-signal-500"
+          />
+          <span>
+            This task was assigned to the whole group. Apply the title, description, and
+            deadline changes to all {batchSiblingCount + 1} interns' copies, not just this one.
+            (Each intern's own status/progress is never affected.)
+          </span>
+        </label>
+      )}
 
       <div className="grid grid-cols-2 gap-4 rounded-md border border-border-strong bg-surface-sunk p-4">
         <Field label="Status (you can always update this)">

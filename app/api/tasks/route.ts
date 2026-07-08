@@ -16,6 +16,14 @@ export async function POST(request: Request) {
   const deadline = body.deadline ? String(body.deadline) : null;
   const assignee_id = String(body.assignee_id ?? "");
   const group_id = String(body.group_id ?? "");
+  // Optional: when the client is creating one copy of a "whole group"
+  // assignment, it generates a single uuid client-side and sends it with
+  // every copy in the batch, so all rows can be linked and later edited
+  // (title/description/deadline) or displayed together. Absent for a
+  // task assigned to a single intern.
+  const rawBatchId = body.batch_id !== undefined && body.batch_id !== null ? String(body.batch_id) : null;
+  const uuidPattern = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+  const batch_id = rawBatchId && uuidPattern.test(rawBatchId) ? rawBatchId : null;
 
   if (!title || title.length > 200) {
     return NextResponse.json({ error: "A valid task title is required" }, { status: 400 });
@@ -38,6 +46,7 @@ export async function POST(request: Request) {
       deadline,
       assignee_id,
       group_id,
+      batch_id,
       created_by: user.id,
       status: "pending",
       progress: 0,

@@ -22,9 +22,15 @@ export default async function TaskDetailPage({ params }: { params: { id: string 
   const { data: task } = await supabase.from("tasks").select("*").eq("id", params.id).single<Task>();
   if (!task) notFound();
 
-  const [{ data: notes }, { data: groupPeople }] = await Promise.all([
+  const [{ data: notes }, { data: groupPeople }, { data: batchSiblings }] = await Promise.all([
     supabase.from("task_notes").select("*").eq("task_id", task.id).order("created_at").returns<TaskNote[]>(),
     supabase.from("profiles").select("*").eq("group_id", task.group_id).returns<Profile[]>(),
+    // Other tasks created in the same "assign to whole group" action as
+    // this one, so we can tell the edit form how many other interns'
+    // copies exist and offer to apply shared-field edits to all of them.
+    task.batch_id
+      ? supabase.from("tasks").select("id").eq("batch_id", task.batch_id).neq("id", task.id)
+      : Promise.resolve({ data: [] as { id: string }[] }),
   ]);
 
   const authorIds = new Set((notes ?? []).map((n) => n.author_id));
@@ -52,7 +58,12 @@ export default async function TaskDetailPage({ params }: { params: { id: string 
     <div>
       <PageHeader
         title={task.title}
-        description={`Assigned to ${authorNameById.get(task.assignee_id) ?? "—"} · Due ${formatDate(task.deadline)}`}
+        description={
+          `Assigned to ${authorNameById.get(task.assignee_id) ?? "—"} · Due ${formatDate(task.deadline)}` +
+          ((batchSiblings?.length ?? 0) > 0
+            ? ` · Part of a group assignment (${(batchSiblings?.length ?? 0) + 1} interns total)`
+            : "")
+        }
         action={
           <div className="flex items-center gap-3">
             <StatusPill status={task.status} />
@@ -63,7 +74,12 @@ export default async function TaskDetailPage({ params }: { params: { id: string 
 
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
         <div className="rounded-md border border-border bg-surface p-5 shadow-card">
-          <TaskEditForm task={task} canEditFull={canEditFull} assigneeOptions={assigneeOptions} />
+          <TaskEditForm
+            task={task}
+            canEditFull={canEditFull}
+            assigneeOptions={assigneeOptions}
+            batchSiblingCount={batchSiblings?.length ?? 0}
+          />
         </div>
 
         <NotesThread
