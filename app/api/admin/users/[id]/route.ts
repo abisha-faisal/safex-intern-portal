@@ -100,7 +100,17 @@ export async function DELETE(_request: Request, { params }: { params: { id: stri
   // service-role key, which is exactly why deletion can only happen
   // through this route.
   const { error } = await admin.auth.admin.deleteUser(params.id);
-  if (error) return NextResponse.json({ error: error.message }, { status: 400 });
+  if (error) {
+    // error.message can occasionally be empty/undefined depending on
+    // where the failure occurred (e.g. a database constraint violated
+    // during the cascade) — JSON.stringify silently drops an `error`
+    // key whose value is undefined, which is why this could otherwise
+    // reach the client as a bare "{}" with no readable message at all.
+    return NextResponse.json(
+      { error: error.message || "Could not delete this user — they may still be referenced elsewhere in the database." },
+      { status: 400 }
+    );
+  }
 
   return NextResponse.json({ ok: true });
 }

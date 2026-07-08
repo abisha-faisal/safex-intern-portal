@@ -31,12 +31,18 @@ export default async function FeedbackPage() {
   // Leader/admin: feedback rows are already scoped by RLS (leader sees
   // only their own group's rows; admin sees all) and carry no author
   // reference whatsoever, so this view is aggregate-only by construction.
-  const [{ data: feedback }, { data: groups }] = await Promise.all([
+  // It IS meant to be clear which group/leader each cluster is about —
+  // only who submitted it is anonymous, not what it's about.
+  const [{ data: feedback }, { data: groups }, { data: leaders }] = await Promise.all([
     supabase.from("feedback").select("*").order("created_at", { ascending: false }).returns<Feedback[]>(),
     supabase.from("groups").select("*").returns<Group[]>(),
+    supabase.from("profiles").select("id, full_name, group_id").eq("role", "leader").returns<
+      { id: string; full_name: string; group_id: string | null }[]
+    >(),
   ]);
 
   const groupName = new Map((groups ?? []).map((g) => [g.id, g.name]));
+  const leaderNameByGroup = new Map((leaders ?? []).filter((l) => l.group_id).map((l) => [l.group_id as string, l.full_name]));
   const byGroup = new Map<string, Feedback[]>();
   (feedback ?? []).forEach((f) => {
     byGroup.set(f.group_id, [...(byGroup.get(f.group_id) ?? []), f]);
@@ -59,9 +65,14 @@ export default async function FeedbackPage() {
           return (
             <div key={groupId} className="rounded-md border border-border bg-surface shadow-card">
               <div className="flex items-center justify-between border-b border-border px-5 py-4">
-                <h2 className="font-display text-base font-semibold text-ink-900">
-                  {groupName.get(groupId) ?? "Group"}
-                </h2>
+                <div>
+                  <h2 className="font-display text-base font-semibold text-ink-900">
+                    {groupName.get(groupId) ?? "Group"}
+                  </h2>
+                  <p className="mt-0.5 text-xs text-ink-600/60">
+                    About: {leaderNameByGroup.get(groupId) ?? "No leader assigned"}
+                  </p>
+                </div>
                 <div className="flex items-center gap-1.5 text-sm">
                   <span className="font-data font-semibold text-ink-900">{avg.toFixed(1)}</span>
                   <span className="text-ink-600/50">avg · {entries.length} response{entries.length === 1 ? "" : "s"}</span>
